@@ -205,7 +205,7 @@ def build_fatigue_curve(parquet_file, all_match_rgs, jersey, team_flag,
         if bucket == last_bucket:
             continue
         last_bucket = bucket
-
+    
         delta_lean   = r["lean"]   - baseline_lean
         delta_stride = (r["stride"] - baseline_str) if r["stride"] else 0
         signal       = fatigue_signal(delta_lean)
