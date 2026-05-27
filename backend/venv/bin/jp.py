@@ -1,4 +1,4 @@
-#!/Users/pauloz/Documents/pj data/backend/venv/bin/python3
+#!/Users/pauloz/Documents/pj data/backend/venv/bin/python3.12
 
 import sys
 import json

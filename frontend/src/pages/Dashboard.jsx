@@ -1,66 +1,25 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { decodeJwtPayload } from "../lib/jwt.js";
+import { Link } from "react-router-dom";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const [label, setLabel] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("You are not signed in.");
-      return;
-    }
-    const payload = decodeJwtPayload(token);
-    const label =
-      payload?.email ||
-      payload?.["cognito:username"] ||
-      payload?.phone_number ||
-      payload?.sub;
-    setLabel(label || "Signed in");
-  }, []);
-
-  function handleSignOut() {
-    localStorage.removeItem("token");
-    navigate("/login");
-  }
-
-  if (error) {
-    return (
-      <div className="auth-stack">
-        <h1 className="auth-title">Dashboard</h1>
-        <p className="auth-lead">{error}</p>
-        <Link className="auth-button auth-button--primary" to="/login">
-          Log in
-        </Link>
-        <Link className="auth-back" to="/">
-          ← Back to home
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="auth-stack">
-      <h1 className="auth-title">Dashboard</h1>
-      <p className="auth-lead">
-        Signed in as <strong>{label || "…"}</strong>
+    <div className="dashboard-page">
+      <h1 className="dashboard-page__title">Dashboard</h1>
+      <p className="dashboard-page__lead">
+        Welcome to Bundesdata FC. Open the Performance tab to explore fatigue curves, degradation
+        episodes, and event biomechanics for the demo player.
       </p>
-      <p className="auth-lead" style={{ fontSize: 14, marginTop: -12 }}>
-        Session uses the ID token returned after login (verified with the backend).
-      </p>
-      <button
-        type="button"
-        className="auth-button auth-button--secondary"
-        onClick={handleSignOut}
-      >
-        Sign out
-      </button>
-      <Link className="auth-back" to="/">
-        ← Back to home
-      </Link>
+      <div className="dashboard-cards">
+        <div className="dashboard-card">
+          <h2>Performance analytics</h2>
+          <p>
+            Union vs Bayern · Jersey #14 · Trunk lean timeline, notable passes, and KPI-enriched
+            event details.
+          </p>
+          <Link className="auth-button auth-button--primary" to="/performance">
+            Open Performance
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

@@ -54,7 +54,7 @@ export default function Login() {
         }
 
         localStorage.setItem("token", idToken);
-        navigate("/dashboard");
+        navigate("/performance");
       } finally {
         clearTimeout(timeoutId);
       }

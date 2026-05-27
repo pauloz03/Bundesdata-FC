@@ -1,0 +1,26 @@
+# Environment & secrets
+.env
+backend/.env
+*.pem
+
+# Local match data (large — never commit)
+*.parquet
+backend/data/parquet/*
+!backend/data/parquet/.gitkeep
+
+# Python
+backend/venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+backend/node_modules/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

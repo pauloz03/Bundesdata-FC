@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/Users/pauloz/Documents/pj data/backend/venv/bin/python3" "$0" "$@"
+'''exec' "/Users/pauloz/Documents/pj data/backend/venv/bin/python3.12" "$0" "$@"
 ' '''
 import sys
 from fastapi.cli import main
