@@ -14,6 +14,32 @@ function playerLabel(p) {
   return `Jersey #${p.jersey}`;
 }
 
+const TEAM_LOGOS = {
+  "fc bayern munich":
+    "https://upload.wikimedia.org/wikipedia/en/thumb/1/1f/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/240px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png",
+  "bayern munich":
+    "https://upload.wikimedia.org/wikipedia/en/thumb/1/1f/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/240px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png",
+  "fc union berlin":
+    "https://upload.wikimedia.org/wikipedia/en/thumb/4/44/1._FC_Union_Berlin_logo.svg/240px-1._FC_Union_Berlin_logo.svg.png",
+  "eintracht frankfurt":
+    "https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/Eintracht_Frankfurt_Logo.svg/240px-Eintracht_Frankfurt_Logo.svg.png",
+};
+
+function normalizeTeamName(name) {
+  return (name || "").toLowerCase().trim();
+}
+
+function getTeamLogo(name) {
+  return TEAM_LOGOS[normalizeTeamName(name)] || null;
+}
+
+function getPlayerAvatar(name) {
+  const label = name || "Player";
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    label,
+  )}&background=0b1220&color=e5e7eb&size=160&bold=true`;
+}
+
 export default function Performance() {
   const [matches, setMatches] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -82,8 +108,22 @@ export default function Performance() {
     const hasHome = players.some((p) => Number(p.team_flag) === 1);
     const hasAway = players.some((p) => Number(p.team_flag) === 0);
     const rows = [];
-    if (hasHome) rows.push({ team_flag: 1, label: selectedMatch?.home_team || "Home" });
-    if (hasAway) rows.push({ team_flag: 0, label: selectedMatch?.away_team || "Away" });
+    if (hasHome) {
+      const homePlayer = players.find((p) => Number(p.team_flag) === 1);
+      rows.push({
+        team_flag: 1,
+        label: selectedMatch?.home_team || "Home",
+        logo_url: homePlayer?.team_logo_url || null,
+      });
+    }
+    if (hasAway) {
+      const awayPlayer = players.find((p) => Number(p.team_flag) === 0);
+      rows.push({
+        team_flag: 0,
+        label: selectedMatch?.away_team || "Away",
+        logo_url: awayPlayer?.team_logo_url || null,
+      });
+    }
     return rows;
   }, [players, selectedMatch]);
 
@@ -155,15 +195,64 @@ export default function Performance() {
   const shots = data?.shots || [];
   const selectedShot = shots[selectedShotIndex] ?? null;
   const matchLabel = selectedMatch?.label || selectedMatchId;
+  const homeTeam = selectedMatch?.home_team || "Home";
+  const awayTeam = selectedMatch?.away_team || "Away";
+  const selectedTeamName = selectedTeamFlag === 1 ? homeTeam : awayTeam;
+  const homeLogo = teams.find((t) => Number(t.team_flag) === 1)?.logo_url || getTeamLogo(homeTeam);
+  const awayLogo = teams.find((t) => Number(t.team_flag) === 0)?.logo_url || getTeamLogo(awayTeam);
+  const selectedPlayerName =
+    selectedPlayer?.player_name ||
+    [selectedPlayer?.first_name, selectedPlayer?.last_name].filter(Boolean).join(" ") ||
+    `Jersey #${selectedPlayer?.jersey ?? "?"}`;
+  const selectedPlayerAvatar = selectedPlayer?.headshot_url || getPlayerAvatar(selectedPlayerName);
 
   return (
     <div className="performance-page">
-      <header className="performance-page__header">
-        <h1 className="performance-page__title">Performance</h1>
-        <p className="performance-page__lead">
-          Fatigue timeline, degradation episodes, and event-level biomechanics.
-        </p>
-      </header>
+      <section className="performance-hero">
+        <header className="performance-page__header">
+          <h1 className="performance-page__title">Performance Hub</h1>
+        </header>
+
+        <div className="performance-hero__cards">
+          <div className="performance-hero__card">
+            <h3>Match</h3>
+            <p>{matchLabel}</p>
+            <div className="team-badges">
+              <div className="team-badge">
+                {homeLogo ? (
+                  <img src={homeLogo} alt={homeTeam} />
+                ) : (
+                  <span className="team-badge__fallback">{homeTeam.slice(0, 2).toUpperCase()}</span>
+                )}
+                <span>{homeTeam}</span>
+              </div>
+              <div className="team-badge">
+                {awayLogo ? (
+                  <img src={awayLogo} alt={awayTeam} />
+                ) : (
+                  <span className="team-badge__fallback">{awayTeam.slice(0, 2).toUpperCase()}</span>
+                )}
+                <span>{awayTeam}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="performance-hero__card performance-hero__card--player">
+            <img
+              className="player-avatar"
+              src={selectedPlayerAvatar}
+              alt={selectedPlayerName}
+            />
+            <div>
+              <h3>Selected Player</h3>
+              <p>{selectedPlayerName}</p>
+              <small>
+                {selectedTeamName} · #{selectedPlayer?.jersey ?? "—"}
+              </small>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="performance-card">
         <label className="performance-field">

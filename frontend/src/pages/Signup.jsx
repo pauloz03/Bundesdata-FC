@@ -154,6 +154,10 @@ export default function Signup() {
 
   return (
     <div className="auth-stack auth-stack--relative">
+      <div className="auth-app-name">
+        <img src="/bundes.jpg" alt="" className="auth-app-name__logo" />
+        <span>Bundesdata FC</span>
+      </div>
       <h1 className="auth-title">Sign up</h1>
       <p className="auth-lead">Create your analyst account</p>
 

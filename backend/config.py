@@ -218,6 +218,22 @@ COGNITO_CLIENT_ID    = os.environ.get(
 )
 COGNITO_REGION       = os.environ.get("COGNITO_REGION", "eu-central-1")
 
+# ── Access control for S3-backed analytics routes ────────────────────────────
+def _norm_email(raw: str) -> str:
+    return (raw or "").strip().strip('"').strip("'").lower()
+
+
+OWNER_EMAIL = _norm_email(os.environ.get("OWNER_EMAIL", "paulo.zapata2013@gmail.com"))
+INVITED_EMAILS = {
+    _norm_email(e)
+    for e in os.environ.get("INVITED_EMAILS", "").split(",")
+    if _norm_email(e)
+}
+
+# ── Optional Football media API (team logos / player photos) ─────────────────
+FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
+FOOTBALL_API_BASE = os.environ.get("FOOTBALL_API_BASE", "https://v3.football.api-sports.io")
+
 
 def validate():
     """Call at app startup — raises if critical env vars are missing."""

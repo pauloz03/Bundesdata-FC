@@ -5,15 +5,21 @@ Serves precomputed JSON from S3 when available; falls back to live compute.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 import biomechanics_sync
 import config
 import event_parser
+import football_media
 import s3_storage
 import skeleton_parser
+from auth_guard import require_s3_access
 
-router = APIRouter(prefix="/matches", tags=["matches"])
+router = APIRouter(
+    prefix="/matches",
+    tags=["matches"],
+    dependencies=[Depends(require_s3_access)],
+)
 
 
 def _ensure_match(match_id: str) -> dict:
@@ -56,11 +62,19 @@ def get_timeline(match_id: str):
 
 @router.get("/{match_id}/players")
 def get_players(match_id: str):
-    _ensure_match(match_id)
+    meta = _ensure_match(match_id)
     data = s3_storage.load_players(match_id)
+    players = None
     if data:
-        return data
-    players = skeleton_parser.get_player_list(match_id)
+        players = data.get("players", [])
+    else:
+        players = skeleton_parser.get_player_list(match_id)
+
+    players = football_media.enrich_players_media(
+        players,
+        home_team_name=meta.get("home_team"),
+        away_team_name=meta.get("away_team"),
+    )
     return {"match_id": match_id, "players": players}
 
 

@@ -31,7 +31,11 @@ def _get_json(key: str) -> Optional[dict[str, Any]]:
         obj = s3.get_object(Bucket=config.S3_BUCKET, Key=key)
         return json.loads(obj["Body"].read().decode("utf-8"))
     except ClientError as exc:
-        if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+        code = exc.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return None
+        # When using temporary AWS creds, this is common; treat as cache-miss.
+        if code in ("ExpiredToken", "InvalidToken", "InvalidAccessKeyId", "AccessDenied"):
             return None
         raise
 

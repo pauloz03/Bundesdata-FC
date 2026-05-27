@@ -75,6 +75,10 @@ export default function Login() {
 
   return (
     <div className="auth-stack">
+      <div className="auth-app-name">
+        <img src="/bundes.jpg" alt="" className="auth-app-name__logo" />
+        <span>Bundesdata FC</span>
+      </div>
       <h1 className="auth-title">Log in</h1>
       <p className="auth-lead">Access your analytics dashboard</p>
 

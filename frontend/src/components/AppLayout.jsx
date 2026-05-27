@@ -18,33 +18,44 @@ export default function AppLayout() {
 
   return (
     <div className="app-layout">
-      <header className="app-navbar">
-        <div className="app-navbar__brand">Bundesdata FC</div>
-        <nav className="app-navbar__links" aria-label="Main">
+      <aside className="app-sidebar" aria-label="Primary">
+        <div className="app-sidebar__brand">
+          <img src="/bundes.jpg" alt="Bundesliga" className="app-sidebar__logo" />
+          <div className="app-sidebar__brand-text">
+            <div className="app-sidebar__title">Bundesdata FC</div>
+          </div>
+        </div>
+
+        <nav className="app-sidebar__nav" aria-label="Main">
           <NavLink
             to="/dashboard"
             className={({ isActive }) =>
-              `app-navbar__link${isActive ? " app-navbar__link--active" : ""}`
+              `app-sidebar__link${isActive ? " app-sidebar__link--active" : ""}`
             }
           >
-            Dashboard
+            <span className="app-sidebar__icon">◻</span>
+            <span>Dashboard</span>
           </NavLink>
           <NavLink
             to="/performance"
             className={({ isActive }) =>
-              `app-navbar__link${isActive ? " app-navbar__link--active" : ""}`
+              `app-sidebar__link${isActive ? " app-sidebar__link--active" : ""}`
             }
           >
-            Performance
+            <span className="app-sidebar__icon">◻</span>
+            <span>Performance</span>
           </NavLink>
         </nav>
-        <div className="app-navbar__user">
-          <span className="app-navbar__email">{label}</span>
-          <button type="button" className="app-navbar__signout" onClick={handleSignOut}>
+
+        <div className="app-sidebar__footer">
+          <div className="app-sidebar__email" title={label}>
+            {label}
+          </div>
+          <button type="button" className="app-sidebar__signout" onClick={handleSignOut}>
             Sign out
           </button>
         </div>
-      </header>
+      </aside>
       <main className="app-main">
         <Outlet />
       </main>

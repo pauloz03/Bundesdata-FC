@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
         "/auth": { target: apiTarget, changeOrigin: true },
         "/protected": { target: apiTarget, changeOrigin: true },
         "/matches": { target: analyticsTarget, changeOrigin: true },
+        "/users": { target: analyticsTarget, changeOrigin: true },
         "/health": { target: analyticsTarget, changeOrigin: true },
         "/explore": { target: analyticsTarget, changeOrigin: true },
       },
