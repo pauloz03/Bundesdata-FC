@@ -584,11 +584,7 @@
   border-radius: 14px;
   margin-bottom: 20px;
   padding: 18px 20px;
-  background:
-    radial-gradient(1200px 320px at 5% 0%, rgba(248, 113, 113, 0.18), transparent 55%),
-    radial-gradient(900px 280px at 95% 0%, rgba(239, 68, 68, 0.14), transparent 58%),
-    radial-gradient(700px 260px at 70% 120%, rgba(190, 18, 60, 0.10), transparent 62%),
-    #070c16;
+  background: #070c16;
 }
 
 .performance-hero .performance-page__title,
