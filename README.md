@@ -141,3 +141,4 @@ Used only for media and image fetching. The project can still run without it.
 ```env
 FOOTBALL_API_KEY=
 ```
+#FRONTEND .ENV INCLUDED IN THE REPO FOR JUDGES
