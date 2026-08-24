@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchMatchPlayers,
   fetchMatches,
-  fetchPlayerAnalytics,
+  fetchPlayerFatigue,
 } from "../lib/analyticsApi.js";
 import FatigueTimeline from "../components/FatigueTimeline.jsx";
 import { PassDetailPanel, ShotDetailPanel } from "../components/EventDetailPanel.jsx";
@@ -165,9 +165,8 @@ export default function Performance() {
     setLoading(true);
     setError("");
 
-    fetchPlayerAnalytics(selectedMatchId, selectedPlayer.jersey, {
+    fetchPlayerFatigue(selectedMatchId, selectedPlayer.jersey, {
       team: selectedPlayer.team_flag,
-      playerId: selectedPlayer.dfl_player_id || null,
     })
       .then((body) => {
         if (cancelled) return;
@@ -319,7 +318,7 @@ export default function Performance() {
         )}
         {loading && (
           <p className="performance-status">
-            Loading analytics… (uses precomputed S3 cache when available)
+            Computing fatigue curve from local parquet…
           </p>
         )}
         {error && <p className="performance-error">{error}</p>}

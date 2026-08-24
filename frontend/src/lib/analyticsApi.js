@@ -36,6 +36,30 @@ export async function fetchMatchPlayers(matchId) {
   return body;
 }
 
+export async function fetchPlayerFatigue(
+  matchId,
+  jersey,
+  { team = 1, recompute = false } = {},
+) {
+  const params = new URLSearchParams({ team: String(team) });
+  if (recompute) params.set("recompute", "true");
+  const res = await fetch(
+    `${analyticsBaseUrl}/matches/${matchId}/players/${jersey}/fatigue?${params}`,
+    {
+      headers: authHeaders(),
+    },
+  );
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail =
+      typeof body.detail === "string"
+        ? body.detail
+        : body.detail?.msg || JSON.stringify(body.detail);
+    throw new Error(detail || `Failed to load fatigue data (${res.status})`);
+  }
+  return body;
+}
+
 export async function fetchPlayerAnalytics(
   matchId,
   jersey,

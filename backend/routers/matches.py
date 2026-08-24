@@ -9,17 +9,30 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 import biomechanics_sync
 import config
+import db
 import event_parser
 import football_media
 import s3_storage
 import skeleton_parser
 from auth_guard import require_s3_access
 
+_match_deps = [] if config.SKIP_AUTH else [Depends(require_s3_access)]
+
 router = APIRouter(
     prefix="/matches",
     tags=["matches"],
-    dependencies=[Depends(require_s3_access)],
+    dependencies=_match_deps,
 )
+
+
+def _listed_match_ids() -> list[str]:
+    if config.SKIP_AUTH:
+        return [
+            mid
+            for mid in config.MATCHES
+            if mid in config.MATCH_METADATA and db.has_local_parquet(mid)
+        ]
+    return [mid for mid in config.MATCHES if mid in config.MATCH_METADATA]
 
 
 def _ensure_match(match_id: str) -> dict:
@@ -43,8 +56,7 @@ def list_matches():
                 "home_team": config.MATCH_METADATA.get(mid, {}).get("home_team"),
                 "away_team": config.MATCH_METADATA.get(mid, {}).get("away_team"),
             }
-            for mid in config.MATCHES
-            if mid in config.MATCH_METADATA
+            for mid in _listed_match_ids()
         ]
     }
 

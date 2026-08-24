@@ -210,38 +210,29 @@ PASS_REQUIRE_EPISODE_FOR_LEAN_ONLY = True  # lean alone counts only inside an ep
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
 API_PORT = int(os.environ.get("API_PORT", "8000"))
 
-# ── Cognito (fill in once you create the user pool) ──────────────────────────
-COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
-COGNITO_CLIENT_ID    = os.environ.get(
-    "COGNITO_CLIENT_ID",
-    os.environ.get("COGNITO_APP_CLIENT_ID", ""),
-)
-COGNITO_REGION       = os.environ.get("COGNITO_REGION", "eu-central-1")
-
-# ── Access control for S3-backed analytics routes ────────────────────────────
-def _norm_email(raw: str) -> str:
-    return (raw or "").strip().strip('"').strip("'").lower()
-
-
-OWNER_EMAIL = _norm_email(os.environ.get("OWNER_EMAIL", "paulo.zapata2013@gmail.com"))
-INVITED_EMAILS = {
-    _norm_email(e)
-    for e in os.environ.get("INVITED_EMAILS", "").split(",")
-    if _norm_email(e)
-}
+# ── PostgreSQL auth (to be implemented) ──────────────────────────────────────
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+JWT_SECRET = os.environ.get("JWT_SECRET", "")
+JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 # ── Optional Football media API (team logos / player photos) ─────────────────
 FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
 FOOTBALL_API_BASE = os.environ.get("FOOTBALL_API_BASE", "https://v3.football.api-sports.io")
 
+# Local demo: skip JWT checks and allow fatigue from local parquet only.
+SKIP_AUTH = os.environ.get("SKIP_AUTH", "").lower() in ("1", "true", "yes")
+
 
 def validate():
     """Call at app startup — raises if critical env vars are missing."""
+    if SKIP_AUTH:
+        return
     missing = []
-    if not AWS_ACCESS_KEY_ID:
-        missing.append("AWS_ACCESS_KEY_ID")
-    if not AWS_SECRET_ACCESS_KEY:
-        missing.append("AWS_SECRET_ACCESS_KEY")
+    if not DATABASE_URL:
+        missing.append("DATABASE_URL")
+    if not JWT_SECRET:
+        missing.append("JWT_SECRET")
     if missing:
         raise EnvironmentError(
             f"Missing required environment variables: {', '.join(missing)}\n"

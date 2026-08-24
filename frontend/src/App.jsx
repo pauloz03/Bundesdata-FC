@@ -5,7 +5,6 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Performance from "./pages/Performance";
 import AppLayout from "./components/AppLayout";
-import RequireAuth from "./components/RequireAuth";
 import "./App.css";
 
 export default function App() {
@@ -35,13 +34,7 @@ export default function App() {
           </div>
         }
       />
-      <Route
-        element={
-          <RequireAuth>
-            <AppLayout />
-          </RequireAuth>
-        }
-      >
+      <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/performance" element={<Performance />} />
       </Route>

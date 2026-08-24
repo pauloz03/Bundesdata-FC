@@ -5,7 +5,8 @@
 Before running the project, make sure you have:
 
 * Python 3.9+
-* Node.js
+* Node.js (for frontend development)
+* PostgreSQL (for auth — coming soon)
 * A virtual environment tool such as `venv`
 
 ---
@@ -49,35 +50,17 @@ pip install -r backend/requirements.txt
 
 ## Start the FastAPI Server
 
-Run this command from the project root:
-
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
----
-
-## Run the Authentication Backend
-
-Open another terminal:
+From the `backend` directory:
 
 ```bash
 cd backend
+./venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Activate the virtual environment again if needed:
-
-### macOS / Linux
+Or from the project root if `main` is on your Python path:
 
 ```bash
-source ../venv/bin/activate
-```
-
-Then run:
-
-```bash
-npm install
-npm start
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -114,30 +97,37 @@ LOCAL_PARQUET_DIR="/absolute/path/to/parquet-folder" python backend/precompute.p
 
 # Environment Variables
 
-Create a `.env` file and add the following variables.
+Create a `backend/.env` file. See `backend/.env.example` for the template.
 
-## Required Backend Environment Variables
-
-### Cognito — JWKS Verification (`/protected`) + `/auth` Routes
+## PostgreSQL Auth (to be implemented)
 
 ```env
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_SESSION_TOKEN=
+DATABASE_URL=postgresql://user:password@localhost:5432/bundesdata
+JWT_SECRET=your-secret-key
 ```
 
-### AWS Authentication
+## Local Demo Mode
+
+Skip auth and serve matches from local parquet only:
 
 ```env
-COGNITO_REGION=
-COGNITO_USER_POOL_ID=
-COGNITO_APP_CLIENT_ID=
+SKIP_AUTH=1
 ```
 
-### Football API Data
+## Football API Data (optional)
 
 Used only for media and image fetching. The project can still run without it.
 
 ```env
 FOOTBALL_API_KEY=
+```
+
+## AWS / S3 (optional)
+
+Only needed if reading match data from S3:
+
+```env
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SESSION_TOKEN=
 ```

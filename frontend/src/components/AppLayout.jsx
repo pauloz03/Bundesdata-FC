@@ -7,9 +7,8 @@ export default function AppLayout() {
   const payload = token ? decodeJwtPayload(token) : null;
   const label =
     payload?.email ||
-    payload?.["cognito:username"] ||
     payload?.phone_number ||
-    "Analyst";
+    (token ? "Analyst" : "Local demo");
 
   function handleSignOut() {
     localStorage.removeItem("token");

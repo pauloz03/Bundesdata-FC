@@ -1,10 +1,9 @@
 /**
- * API base URL. In Vite dev, default is same-origin + `vite.config.js` proxy → no CORS.
- * Set VITE_API_URL to your Express URL for `vite preview` or production builds.
+ * FastAPI base URL (port 8000). In dev, Vite proxies /auth and /users to this target.
  */
 export const apiBaseUrl = (() => {
   const fromEnv = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
   if (fromEnv) return fromEnv;
   if (import.meta.env.DEV) return "";
-  return "http://localhost:5050";
+  return "http://localhost:8000";
 })();

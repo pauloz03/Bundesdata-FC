@@ -45,6 +45,12 @@ def get_s3_parquet_path(match_id: str) -> str:
     return f"s3://{config.S3_BUCKET}/{prefix}{parquet_filename}"
 
 
+def has_local_parquet(match_id: str) -> bool:
+    """True when a parquet file exists on disk for this match (no S3 fallback)."""
+    _, use_s3 = get_parquet_path(match_id)
+    return not use_s3
+
+
 def get_parquet_path(match_id: str) -> tuple[str, bool]:
     """
     Resolve Parquet path for DuckDB read_parquet().

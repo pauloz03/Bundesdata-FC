@@ -271,8 +271,12 @@ def get_player_event_biomechanics(
     baseline = fatigue.get("baseline", {})
     episodes = fatigue_episodes.detect_degradation_episodes(curve)
 
-    shots = event_parser.get_player_shots(match_id, player_id)
-    passes = event_parser.get_player_passes(match_id, player_id)
+    try:
+        shots = event_parser.get_player_shots(match_id, player_id)
+        passes = event_parser.get_player_passes(match_id, player_id)
+    except Exception:
+        shots = []
+        passes = []
 
     # Compute event → frame/minute once, then batch-fetch biomechanics.
     frames_needed: set[int] = set()
