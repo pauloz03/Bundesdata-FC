@@ -70,6 +70,10 @@ body {
   border-inline: 1px solid var(--border);
 }
 
+#root:has(.auth-landing) {
+  border-inline: none;
+}
+
 h1,
 h2 {
   font-family: var(--heading);

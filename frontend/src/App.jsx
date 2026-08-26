@@ -5,6 +5,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Performance from "./pages/Performance";
 import AppLayout from "./components/AppLayout";
+import RequireAuth from "./components/RequireAuth";
 import "./App.css";
 
 export default function App() {
@@ -13,8 +14,10 @@ export default function App() {
       <Route
         path="/"
         element={
-          <div className="auth-shell">
-            <Home />
+          <div className="auth-landing">
+            <div className="auth-shell">
+              <Home />
+            </div>
           </div>
         }
       />
@@ -35,8 +38,10 @@ export default function App() {
         }
       />
       <Route element={<AppLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/performance" element={<Performance />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/performance" element={<Performance />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -10,10 +10,7 @@ export default function Home() {
       <h1 className="auth-title">Welcome</h1>
       <p className="auth-lead">Choose an option to continue.</p>
       <div className="auth-actions auth-actions--column">
-        <Link className="auth-button auth-button--primary" to="/performance">
-          View performance (local demo)
-        </Link>
-        <Link className="auth-button auth-button--secondary" to="/login">
+        <Link className="auth-button auth-button--primary" to="/login">
           Log in
         </Link>
         <Link className="auth-button auth-button--secondary" to="/signup">

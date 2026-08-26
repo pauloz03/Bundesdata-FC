@@ -3,7 +3,7 @@ from __future__ import annotations
 """
 skeleton_parser.py
 ──────────────────
-Reads TRACAB GEN5 Parquet skeleton files from S3 using DuckDB.
+Reads TRACAB GEN5 Parquet skeleton files from local disk using DuckDB.
 Returns clean structured data for the fatigue curve and player baseline.
 
 Main public functions:

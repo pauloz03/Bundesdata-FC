@@ -15,8 +15,9 @@ Usage:
 import argparse
 import json
 import logging
-import boto3
+# import boto3
 import config
+import possession
 import skeleton_parser
 import event_parser
 import biomechanics_sync
@@ -32,26 +33,30 @@ log = logging.getLogger(__name__)
 # S3 helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _s3_client():
-    return boto3.client(
-        "s3",
-        region_name=config.AWS_REGION,
-        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
-        aws_session_token=config.AWS_SESSION_TOKEN or None,
-    )
+# def _s3_client():
+#     return boto3.client(
+#         "s3",
+#         region_name=config.AWS_REGION,
+#         aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+#         aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+#         aws_session_token=config.AWS_SESSION_TOKEN or None,
+#     )
+
+
+# def _save_json_to_s3(data: dict, s3_key: str):
+#     """Upload a dict as a JSON file to S3."""
+#     s3 = _s3_client()
+#     s3.put_object(
+#         Bucket=config.S3_BUCKET,
+#         Key=s3_key,
+#         Body=json.dumps(data, ensure_ascii=False, default=str),
+#         ContentType="application/json",
+#     )
+#     log.info(f"  Saved → s3://{config.S3_BUCKET}/{s3_key}")
 
 
 def _save_json_to_s3(data: dict, s3_key: str):
-    """Upload a dict as a JSON file to S3."""
-    s3 = _s3_client()
-    s3.put_object(
-        Bucket=config.S3_BUCKET,
-        Key=s3_key,
-        Body=json.dumps(data, ensure_ascii=False, default=str),
-        ContentType="application/json",
-    )
-    log.info(f"  Saved → s3://{config.S3_BUCKET}/{s3_key}")
+    log.warning("S3 upload disabled; skip %s", s3_key)
 
 
 def _precomputed_key(match_id: str, jersey: int, team_flag: int) -> str:
@@ -82,15 +87,40 @@ def precompute_match(match_id: str):
         log.error(f"No metadata found for {match_id}. Add it to config.MATCH_METADATA.")
         return
 
-    # ── Step 1: Player list + DFL id mapping ──────────────────────────────────
+    # ── Step 1: Possession + derived events from tracking ─────────────────────
+    log.info("  Deriving possession and events from tracking data...")
+    try:
+        poss = possession.analyze_match(match_id)
+        path = possession.save(match_id, poss)
+        share = poss["possession"]
+        counts = {}
+        for ev in poss["events"]:
+            counts[ev["event_type"]] = counts.get(ev["event_type"], 0) + 1
+        log.info(
+            f"  {len(poss['events'])} events "
+            f"({counts.get('pass', 0)} passes, {counts.get('turnover', 0)} turnovers, "
+            f"{counts.get('restart', 0)} restarts) · "
+            f"possession {share['home_pct']}% / {share['away_pct']}%"
+        )
+        log.info(f"  Saved → {path}")
+    except Exception as e:
+        log.error(f"  Possession analysis failed: {e}")
+
+    # ── Step 2: Player list + DFL id mapping ──────────────────────────────────
     log.info("  Fetching player list from skeleton data...")
     players = skeleton_parser.get_player_list(match_id)
-    player_profiles = event_parser.get_player_profile_map(match_id)
-    player_id_map = event_parser.get_player_id_map(match_id)
-    log.info(
-        f"  Found {len(players)} players, "
-        f"{len(player_id_map)} DFL id mappings from match_info"
-    )
+
+    # Names and DFL ids come from the vendor XML, which may be absent.
+    try:
+        player_profiles = event_parser.get_player_profile_map(match_id)
+        player_id_map = event_parser.get_player_id_map(match_id)
+        log.info(
+            f"  Found {len(players)} players, "
+            f"{len(player_id_map)} DFL id mappings from match_info"
+        )
+    except Exception as e:
+        player_profiles, player_id_map = {}, {}
+        log.warning(f"  No XML identity data ({e}); jersey numbers only")
 
     for player in players:
         key = (player["jersey"], player["team_flag"])
@@ -108,17 +138,19 @@ def precompute_match(match_id: str):
         _precomputed_players_key(match_id),
     )
 
-    # ── Step 2: Match timeline ────────────────────────────────────────────────
+    # ── Step 3: Match timeline ────────────────────────────────────────────────
     log.info("  Parsing match event timeline...")
-    timeline = event_parser.get_match_timeline(match_id)
-    log.info(f"  Found {len(timeline)} timeline events")
+    try:
+        timeline = event_parser.get_match_timeline(match_id)
+        log.info(f"  Found {len(timeline)} timeline events")
+        _save_json_to_s3(
+            {"match_id": match_id, "timeline": timeline},
+            _precomputed_timeline_key(match_id),
+        )
+    except Exception as e:
+        log.warning(f"  No XML timeline ({e}); skipping")
 
-    _save_json_to_s3(
-        {"match_id": match_id, "timeline": timeline},
-        _precomputed_timeline_key(match_id),
-    )
-
-    # ── Step 3: Per-player biomechanics ───────────────────────────────────────
+    # ── Step 4: Per-player biomechanics ───────────────────────────────────────
     log.info("  Computing biomechanics per player...")
     success_count = 0
     error_count   = 0

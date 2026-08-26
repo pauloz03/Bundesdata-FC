@@ -5,10 +5,20 @@ from dotenv import load_dotenv
 _BACKEND_DIR = Path(__file__).resolve().parent
 load_dotenv(_BACKEND_DIR / ".env")
 
-# Local Parquet cache — drop match files here to avoid repeated S3 scans.
+# Local Parquet cache — drop match files here (S3 is disabled).
 # e.g. backend/data/parquet/FCU-FCB.parquet for union_bayern
 LOCAL_PARQUET_DIR = Path(
     os.environ.get("LOCAL_PARQUET_DIR", str(_BACKEND_DIR / "data" / "parquet"))
+).expanduser()
+
+# Local XML event files — same filenames as MATCH_XML_FILES.
+LOCAL_XML_DIR = Path(
+    os.environ.get("LOCAL_XML_DIR", str(_BACKEND_DIR / "data" / "xml"))
+).expanduser()
+
+# Precomputed analytics artifacts (small JSON, safe to commit).
+LOCAL_PRECOMPUTED_DIR = Path(
+    os.environ.get("LOCAL_PRECOMPUTED_DIR", str(_BACKEND_DIR / "data" / "precomputed"))
 ).expanduser()
 
 # ── AWS ──
@@ -21,7 +31,24 @@ AWS_REGION            = os.environ.get("AWS_REGION", "eu-central-1")
 S3_BUCKET    = os.environ.get("S3_BUCKET", "hackathon-data-127393434859")
 S3_CHALLENGE = "Challenge 2 \u2013 Unlock the Power of 3D Football Data"
 
-# ── Match registry ────────────────────────────────────────────────────────────
+
+#POSTGRES DB
+DATABASE_URL= os.environ.get("DATABASE_URL", "")
+
+#JWT
+SECRET_JWT_KEY = os.environ.get("SECRET_JWT_KEY", "")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", ""))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", ""))
+TOKEN_ALGORITHM= os.environ.get("TOKEN_ALGORITHM", "HS256")
+
+#REDIS
+REDIS_HOST= os.environ.get("REDIS_HOST", "")
+REDIS_PORT= int(os.environ.get("REDIS_PORT", ""))
+REDIS_DB= int(os.environ.get("REDIS_DB", ""))
+RATE_LIMIT_ATTEMPTS= int(os.environ.get("RATE_LIMIT_ATTEMPTS", ""))
+RATE_LIMIT_EXPIRE= int(os.environ.get("RATE_LIMIT_EXPIRE", ""))
+
+# Match registry 
 # Each match needs:
 
 MATCHES = {
@@ -210,12 +237,6 @@ PASS_REQUIRE_EPISODE_FOR_LEAN_ONLY = True  # lean alone counts only inside an ep
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
 API_PORT = int(os.environ.get("API_PORT", "8000"))
 
-# ── PostgreSQL auth (to be implemented) ──────────────────────────────────────
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-JWT_SECRET = os.environ.get("JWT_SECRET", "")
-JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
-
 # ── Optional Football media API (team logos / player photos) ─────────────────
 FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
 FOOTBALL_API_BASE = os.environ.get("FOOTBALL_API_BASE", "https://v3.football.api-sports.io")
@@ -231,8 +252,8 @@ def validate():
     missing = []
     if not DATABASE_URL:
         missing.append("DATABASE_URL")
-    if not JWT_SECRET:
-        missing.append("JWT_SECRET")
+    if not SECRET_JWT_KEY:
+        missing.append("SECRET_JWT_KEY")
     if missing:
         raise EnvironmentError(
             f"Missing required environment variables: {', '.join(missing)}\n"

@@ -3,9 +3,10 @@ import {
   fetchMatchPlayers,
   fetchMatches,
   fetchPlayerFatigue,
+  fetchPossession,
 } from "../lib/analyticsApi.js";
 import FatigueTimeline from "../components/FatigueTimeline.jsx";
-import { PassDetailPanel, ShotDetailPanel } from "../components/EventDetailPanel.jsx";
+import PossessionPitch from "../components/PossessionPitch.jsx";
 
 function playerLabel(p) {
   const name = p.player_name || [p.first_name, p.last_name].filter(Boolean).join(" ");
@@ -50,8 +51,9 @@ export default function Performance() {
   const [loading, setLoading] = useState(false);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedPassId, setSelectedPassId] = useState(null);
-  const [selectedShotIndex, setSelectedShotIndex] = useState(0);
+  const [possession, setPossession] = useState(null);
+  const [possessionLoading, setPossessionLoading] = useState(false);
+  const [possessionError, setPossessionError] = useState("");
 
   useEffect(() => {
     fetchMatches()
@@ -99,10 +101,40 @@ export default function Performance() {
     };
   }, [selectedMatchId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setPossession(null);
+    setPossessionError("");
+    setPossessionLoading(true);
+
+    fetchPossession(selectedMatchId)
+      .then((res) => {
+        if (!cancelled) setPossession(res);
+      })
+      .catch((e) => {
+        if (!cancelled) setPossessionError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setPossessionLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMatchId]);
+
   const selectedMatch = useMemo(
     () => matches.find((m) => m.id === selectedMatchId) || null,
     [matches, selectedMatchId],
   );
+
+  const eventCounts = useMemo(() => {
+    const events = possession?.events || [];
+    return events.reduce((acc, e) => {
+      acc[e.event_type] = (acc[e.event_type] || 0) + 1;
+      return acc;
+    }, {});
+  }, [possession]);
 
   const teams = useMemo(() => {
     const hasHome = players.some((p) => Number(p.team_flag) === 1);
@@ -171,8 +203,6 @@ export default function Performance() {
       .then((body) => {
         if (cancelled) return;
         setData(body);
-        setSelectedPassId(body.passes?.[0]?.event_id ?? null);
-        setSelectedShotIndex(0);
       })
       .catch((e) => {
         if (!cancelled) setError(e.message);
@@ -186,13 +216,6 @@ export default function Performance() {
     };
   }, [selectedMatchId, selectedPlayer]);
 
-  const selectedPass = useMemo(
-    () => data?.passes?.find((p) => p.event_id === selectedPassId) ?? null,
-    [data, selectedPassId],
-  );
-
-  const shots = data?.shots || [];
-  const selectedShot = shots[selectedShotIndex] ?? null;
   const matchLabel = selectedMatch?.label || selectedMatchId;
   const homeTeam = selectedMatch?.home_team || "Home";
   const awayTeam = selectedMatch?.away_team || "Away";
@@ -325,133 +348,136 @@ export default function Performance() {
       </section>
 
       {data && selectedPlayer && (
-        <>
-          <section className="performance-card">
-            <h2 className="performance-card__title">Timeline</h2>
-            <p className="performance-card__text">
-              <strong>Lean Δ (°)</strong> — trunk lean at each ~5s sample minus kickoff baseline.
-              Shaded bands are sustained <strong>degradation episodes</strong>. Dots are{" "}
-              <strong>notable passes</strong> (stride/lean vs baseline, episode-aware).
+        <section className="performance-card">
+          <h2 className="performance-card__title">Timeline</h2>
+          <p className="performance-card__text">
+            <strong>Lean Δ (°)</strong> — trunk lean at each ~5s sample minus kickoff
+            baseline. Shaded bands are sustained <strong>degradation episodes</strong>.
+          </p>
+          <FatigueTimeline
+            curve={data.fatigue?.curve || []}
+            episodes={data.degradation_episodes || []}
+            baseline={data.fatigue?.baseline || {}}
+          />
+          {data.fatigue?.summary && (
+            <p className="detail-note">
+              Match summary: final lean drift {data.fatigue.summary.drift_lean}° · signal{" "}
+              {data.fatigue.summary.final_signal} · {data.degradation_episodes?.length ?? 0}{" "}
+              episodes
             </p>
-            <FatigueTimeline
-              curve={data.fatigue?.curve || []}
-              episodes={data.degradation_episodes || []}
-              baseline={data.fatigue?.baseline || {}}
-              passes={data.passes || []}
-              selectedPassId={selectedPassId}
-              onSelectPass={(p) => setSelectedPassId(p.event_id)}
+          )}
+        </section>
+      )}
+
+      <section className="performance-card performance-card--panel">
+        <h2 className="performance-card__title">Possession share</h2>
+        <p className="performance-card__text">
+          Time each team spent in direct control of the ball, derived from tracking
+          data. The pitch is split by <strong>area proportion only</strong>, so it
+          does not show where possession happened. Ball-in-flight and out-of-play
+          time is excluded, so this won&apos;t match broadcast possession figures.
+        </p>
+
+        {possessionLoading && (
+          <p className="performance-status">
+            Deriving possession from tracking data… (first run per match scans the
+            full parquet and takes ~25s)
+          </p>
+        )}
+        {possessionError && <p className="performance-error">{possessionError}</p>}
+
+        {possession?.possession && (
+          <>
+            <PossessionPitch
+              homeTeam={possession.home_team || "Home"}
+              awayTeam={possession.away_team || "Away"}
+              homePct={possession.possession.home_pct}
+              awayPct={possession.possession.away_pct}
+              homeSeconds={possession.possession.home_seconds}
+              awaySeconds={possession.possession.away_seconds}
             />
-            {data.fatigue?.summary && (
+            <div className="possession-summary">
+              <span>
+                Passes{" "}
+                <span className="possession-summary__value">{eventCounts.pass || 0}</span>
+              </span>
+              <span>
+                Turnovers{" "}
+                <span className="possession-summary__value">
+                  {eventCounts.turnover || 0}
+                </span>
+              </span>
+              <span>
+                Restarts{" "}
+                <span className="possession-summary__value">
+                  {eventCounts.restart || 0}
+                </span>
+              </span>
+            </div>
+            {possession.unverified && (
               <p className="detail-note">
-                Match summary: final lean drift {data.fatigue.summary.drift_lean}° · signal{" "}
-                {data.fatigue.summary.final_signal} · {data.degradation_episodes?.length ?? 0}{" "}
-                episodes
+                Events are derived from ball and player tracking, not vendor labels.
               </p>
             )}
-          </section>
+          </>
+        )}
+      </section>
 
-          <div className="performance-grid">
-            <section className="performance-card">
-              <h2 className="performance-card__title">Notable passes</h2>
-              <p className="performance-card__text">
-                {data.passes_summary?.notable_count ?? 0} notable of{" "}
-                {data.passes_summary?.total_passes ?? 0} total passes.
-              </p>
-              <div className="pass-table-wrap">
-                <table className="pass-table">
-                  <thead>
-                    <tr>
-                      <th>Min</th>
-                      <th>Eval</th>
-                      <th>Lean Δ°</th>
-                      <th>Stride Δ m</th>
-                      <th>Episode</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data.passes || []).map((p) => (
-                      <tr
-                        key={p.event_id}
-                        className={
-                          p.event_id === selectedPassId ? "pass-table__row--active" : ""
-                        }
-                        onClick={() => setSelectedPassId(p.event_id)}
-                      >
-                        <td>{p.minute?.toFixed?.(1) ?? "—"}</td>
-                        <td>{p.evaluation ?? "—"}</td>
-                        <td>{p.deltas?.lean ?? "—"}</td>
-                        <td>{p.deltas?.stride ?? "—"}</td>
-                        <td>{p.in_episode ? "Yes" : "No"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="performance-card">
-              <h2 className="performance-card__title">Pass detail</h2>
-              <PassDetailPanel
-                pass={selectedPass}
-                episodes={data.degradation_episodes || []}
-                baseline={data.fatigue?.baseline || {}}
-              />
-            </section>
-          </div>
-
-          <section className="performance-card">
-            <h2 className="performance-card__title">Shots</h2>
-            {shots.length === 0 ? (
-              <p className="performance-card__text">
-                No shots for this player in <strong>{matchLabel}</strong> (no matching{" "}
-                <code>ShotAtGoal</code> events in the feed).
-              </p>
-            ) : (
-              <>
-                <div className="shot-tabs">
-                  {shots.map((s, i) => (
-                    <button
-                      key={s.event_id || i}
-                      type="button"
-                      className={`shot-tab${i === selectedShotIndex ? " shot-tab--active" : ""}`}
-                      onClick={() => setSelectedShotIndex(i)}
-                    >
-                      {s.minute?.toFixed?.(1) ?? "?"}&apos; — {s.outcome}
-                    </button>
-                  ))}
-                </div>
-                <ShotDetailPanel shot={selectedShot} baseline={data.fatigue?.baseline || {}} />
-              </>
-            )}
-          </section>
-
-          <section className="performance-card performance-card--muted">
-            <h2 className="performance-card__title">Attribute glossary</h2>
-            <ul className="glossary">
-              <li>
-                <strong>Lean Δ</strong> — trunk lean (°) minus kickoff baseline; positive ≈ more
-                forward lean.
-              </li>
-              <li>
-                <strong>Stride Δ</strong> — ankle separation (m) vs baseline; negative ≈ shorter
-                stride.
-              </li>
-              <li>
-                <strong>Degradation episode</strong> — consecutive ~5s samples with elevated lean
-                or reduced stride.
-              </li>
-              <li>
-                <strong>xPass / pressure</strong> — KPI fields joined by <code>event_id</code>.
-              </li>
-              <li>
-                <strong>Distance (pass)</strong> — DFL band (short / medium / long), not metres.
-              </li>
-              <li>
-                <strong>Angle (shot)</strong> — angle to goal from KPI; separate from trunk lean.
-              </li>
-            </ul>
-          </section>
-        </>
+      {data && selectedPlayer && (
+        <section className="performance-card performance-card--muted">
+          <h2 className="performance-card__title">Attribute glossary</h2>
+          <ul className="glossary">
+            <li>
+              <strong>Lean Δ</strong> — trunk lean (°) minus kickoff baseline; positive ≈ more
+              forward lean.
+            </li>
+            <li>
+              <strong>Stride Δ</strong> — ankle separation (m) vs baseline; negative ≈ shorter
+              stride.
+            </li>
+            <li>
+              <strong>Baseline</strong> — mean lean, stride and shoulder asymmetry over the
+              first 10 samples after kickoff (roughly the opening 50 seconds), taken as the
+              player&apos;s fresh posture. Every Δ on this page is measured against it.
+            </li>
+            <li>
+              <strong>Degradation episode</strong> — a sustained run of posture decline, built
+              in four steps:
+              <ol className="glossary__steps">
+                <li>
+                  <strong>Sample.</strong> The skeleton stream is read every 250 frames, which
+                  is one sample per ~5 seconds at 50Hz. Trunk lean, stride and shoulder
+                  asymmetry are computed at each sample and differenced against the baseline.
+                </li>
+                <li>
+                  <strong>Smooth.</strong> A 3-point median filter runs over the lean Δ series,
+                  so a single bad skeleton fit or an odd body position (a stretch, a slide,
+                  bending to tie a boot) can&apos;t create an episode on its own.
+                </li>
+                <li>
+                  <strong>Flag.</strong> A sample counts as degraded when smoothed lean sits
+                  ≥3.0° above baseline <em>or</em> stride has shortened by ≥0.08m. Either
+                  signal alone is enough, since players compensate differently as they tire —
+                  some fold forward at the trunk, others keep posture but shorten their step.
+                </li>
+                <li>
+                  <strong>Group.</strong> Six consecutive degraded samples (~30 seconds) form
+                  an episode. One clean sample is tolerated inside a run, so a brief walk or
+                  stoppage doesn&apos;t split a genuine episode in two; two in a row ends it.
+                </li>
+              </ol>
+              The ~30s floor is what separates fatigue from noise. A player leans forward
+              constantly during normal play, so only decline that <em>persists</em> across
+              roughly half a minute is treated as a real change in movement quality.
+            </li>
+            <li>
+              <strong>Episode severity</strong> — graded on the peak smoothed lean Δ inside the
+              episode: <strong>mild</strong> from 0.5°, <strong>moderate</strong> from 2.0°,
+              <strong> high</strong> from 5.0°. An episode driven by stride alone is graded
+              moderate when the step shortened by ≥0.16m, mild otherwise.
+            </li>
+          </ul>
+        </section>
       )}
     </div>
   );

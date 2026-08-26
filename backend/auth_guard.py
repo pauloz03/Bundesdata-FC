@@ -10,9 +10,15 @@ import config
 import secrets
 from datetime import datetime, timedelta, timezone
 
-
+#This object's whole job is: look at the incoming request, find the Authorization header, check it
+#  starts with Bearer , and if so, pull out everything after it, the token part
 security_scheme = HTTPBearer()
 
+
+#so credentials is equal to a HTTPAuthorizationCredentials object,  which gets a value  when we call 
+# security_schema to get the token, using Depends. Before get_current_user runs even one line, FastAPI sees 
+# Depends(security_scheme) and calls security_scheme itself, this is HTTPBearer() doing its extraction work 
+# on the incoming request right now
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> dict:
     token = credentials.credentials
     payload = verify_access_token(token)
@@ -36,17 +42,3 @@ def verify_access_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def get_current_user_payload(
-    authorization: str | None = Header(default=None),
-) -> dict:
-    raise _NOT_IMPLEMENTED
-
-
-def get_user_email(user_payload: dict) -> str:
-    return (user_payload.get("email") or "").strip().lower()
-
-
-def require_s3_access(
-    user_payload: dict = Depends(get_current_user_payload),
-) -> dict:
-    raise _NOT_IMPLEMENTED

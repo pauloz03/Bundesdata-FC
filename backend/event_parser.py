@@ -3,7 +3,7 @@ from __future__ import annotations
 """
 event_parser.py
 ───────────────
-Parses Bundesliga XML event and KPI data files from S3.
+Parses Bundesliga XML event and KPI data files from local disk.
 Returns structured shot and pass events for a player in a match.
 
 Main public functions:
@@ -13,7 +13,7 @@ Main public functions:
     get_player_id_map(match_id)
 """
 
-import boto3
+# import boto3
 import xmltodict
 import config
 import db as db_module
@@ -22,26 +22,31 @@ _player_id_map_cache: dict[str, dict[tuple[int, int], str]] = {}
 _player_profile_map_cache: dict[str, dict[tuple[int, int], dict]] = {}
 
 
-def _s3_client():
-    return boto3.client(
-        "s3",
-        region_name=config.AWS_REGION,
-        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
-        aws_session_token=config.AWS_SESSION_TOKEN or None,
-    )
+# def _s3_client():
+#     return boto3.client(
+#         "s3",
+#         region_name=config.AWS_REGION,
+#         aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+#         aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+#         aws_session_token=config.AWS_SESSION_TOKEN or None,
+#     )
 
 
-def _read_xml_from_s3(match_id: str, xml_type: str) -> dict:
-    """Download and parse an XML file from S3 into a dict."""
-    s3_path = db_module.get_s3_xml_path(match_id, xml_type)
+# def _read_xml(match_id: str, xml_type: str) -> dict:
+#     """Download and parse an XML file from S3 into a dict."""
+#     s3_path = db_module.get_s3_xml_path(match_id, xml_type)
+#     key = s3_path.replace(f"s3://{config.S3_BUCKET}/", "")
+#     s3 = _s3_client()
+#     obj = s3.get_object(Bucket=config.S3_BUCKET, Key=key)
+#     return xmltodict.parse(obj["Body"].read())
 
-    # Strip s3://bucket/ prefix to get the key
-    key = s3_path.replace(f"s3://{config.S3_BUCKET}/", "")
 
-    s3 = _s3_client()
-    obj = s3.get_object(Bucket=config.S3_BUCKET, Key=key)
-    return xmltodict.parse(obj["Body"].read())
+def _read_xml(match_id: str, xml_type: str) -> dict:
+    """Parse a local XML file for this match."""
+    path = db_module.get_local_xml_path(match_id, xml_type)
+    if not path.is_file():
+        raise FileNotFoundError(f"Local XML not found: {path}")
+    return xmltodict.parse(path.read_bytes())
 
 
 def _unwrap_put_data_request(raw: dict) -> dict:
@@ -197,7 +202,7 @@ def get_player_profile_map(match_id: str) -> dict[tuple[int, int], dict]:
     profiles: dict[tuple[int, int], dict] = {}
 
     try:
-        raw = _read_xml_from_s3(match_id, "match_info")
+        raw = _read_xml(match_id, "match_info")
         pdr = _unwrap_put_data_request(raw)
         mi = pdr.get("MatchInformation", {})
         teams = mi.get("Teams", {}).get("Team", [])
@@ -274,7 +279,7 @@ def resolve_player_name(match_id: str, jersey: int, team_flag: int) -> str | Non
 def get_kickoff_time_str(match_id: str) -> str | None:
     """Kickoff ISO timestamp from KPI AdvancedEvents (preferred) or match_info."""
     try:
-        raw = _read_xml_from_s3(match_id, "kpi")
+        raw = _read_xml(match_id, "kpi")
         adv = _unwrap_put_data_request(raw).get("AdvancedEvents", {})
         if isinstance(adv, dict):
             kickoff = _safe_str(adv.get("@KickoffTime"))
@@ -284,7 +289,7 @@ def get_kickoff_time_str(match_id: str) -> str | None:
         pass
 
     try:
-        raw = _read_xml_from_s3(match_id, "match_info")
+        raw = _read_xml(match_id, "match_info")
         return _find_kickoff_string(_unwrap_put_data_request(raw))
     except Exception:
         return None
@@ -316,7 +321,7 @@ def _build_kpi_index(match_id: str) -> dict:
     Parse KPI XML (AdvancedEvents) and index rows by @EventId.
     Each nested Play/ShotAtGoal carries pressure, speed, xG, etc.
     """
-    raw = _read_xml_from_s3(match_id, "kpi")
+    raw = _read_xml(match_id, "kpi")
     rows = _get_kpi_rows(raw)
 
     index = {}
@@ -371,7 +376,7 @@ def get_match_timeline(match_id: str) -> list[dict]:
     Return all key match events for the timeline view.
     Includes: goals, yellow/red cards, substitutions, fouls.
     """
-    raw = _read_xml_from_s3(match_id, "events")
+    raw = _read_xml(match_id, "events")
     events = _get_events(raw)
 
     timeline = []
@@ -421,7 +426,7 @@ def get_player_shots(match_id: str, player_id: str) -> list[dict]:
     Return all shot events for a player with full metadata.
     Enriched with KPI data (xG, pressure, player speed).
     """
-    raw = _read_xml_from_s3(match_id, "events")
+    raw = _read_xml(match_id, "events")
     kpi = _build_kpi_index(match_id)
     events = _get_events(raw)
 
@@ -500,7 +505,7 @@ def get_player_passes(match_id: str, player_id: str) -> list[dict]:
     Return all pass events for a player.
     Enriched with xPass and pressure from KPI data.
     """
-    raw = _read_xml_from_s3(match_id, "events")
+    raw = _read_xml(match_id, "events")
     kpi = _build_kpi_index(match_id)
     events = _get_events(raw)
 
